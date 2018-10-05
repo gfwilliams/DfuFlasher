@@ -1,3 +1,9 @@
+DfuFlasher
+===========
+
+Tool for automatically flashing multiple Nordif DFU devices at once.
+
+Currently work in progress.
 
 
 ```

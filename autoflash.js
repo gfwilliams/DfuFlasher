@@ -28,50 +28,87 @@ var http = require("http");
 var https = require("https");
 var readline = require("readline");
 var crc = require("crc-32");
-var progress = require("progress");
 var webbluetooth = require("webbluetooth");
-var Package = require("./package");
+var Package = require("./package"); // zip package opener
 var SecureDfu = require("web-bluetooth-dfu");
+var Multiprogress = require("multi-progress");
+var multiprogress;
 
-var currentStatus = "";
-var progressBar = new progress("...", {
-    complete: "=",
-    incomplete: " ",
-    width: 20,
-    total: 100
-});
+var bluetooth;
+
+var MAX_DEVICES = 1;
+var SCAN_TIMEOUT = 2;
+
+function startProgress() {
+  multiprogress = new Multiprogress(process.stderr);
+}
+function endProgress() {
+  multiprogress.terminate();
+  multiprogress = undefined;
+}
 
 function setStatus(s) {
-  currentStatus = s;
-  progressBar.fmt = currentStatus;
-  progressBar.update(0);
+  console.log(s);
 }
 
 
 // Use a custom Bluetooth instance to control device selection
-function findDevice() {
-  setStatus("Scanning...");
+function findDevices() {
+  setStatus("Scanning ("+SCAN_TIMEOUT+"s)...");
 
-  function handleDeviceFound(bluetoothDevice, selectFn) {
-    // We only care about DfuTarg
-    if (!bluetoothDevice.name || bluetoothDevice.name!="DfuTarg")
-      return;
-    setStatus("Starting update");
-    var updater = {
-      id : bluetoothDevice.id
-    };
-    console.log(bluetoothDevice.id);
-    updater.promise = updateDevice(updater, bluetoothDevice);
+  var devices = [];
+  function handleDeviceFound(device, selectFn) {
+    if (device.name && device.name === "DfuTarg") {
+      if (!devices.find(d=>d.id==device.id))
+        devices.push(device);
+    }
   }
 
   var bluetooth = new webbluetooth.Bluetooth({
       deviceFound: handleDeviceFound
   });
-
-  return bluetooth.requestDevice({
+  bluetooth.requestDevice({
       acceptAllDevices: true,
       optionalServices: [SecureDfu.SERVICE_UUID]
   });
+  setTimeout(function() {
+    if (devices) {
+      console.log("Found:");
+      devices.forEach(x=>console.log(" "+x.id));
+      if (devices.length>MAX_DEVICES) {
+        console.log("Updating first "+MAX_DEVICES);
+        devices = devices.slice(0,MAX_DEVICES);
+      }
+      startProgress();
+
+      Promise.all( devices.map( function(device, idx) {
+        return new Promise(function(resolve) {
+          setTimeout(function() {
+            return updateDevice(device);
+          }, 2000*idx);
+        });
+      } )).then(function() {
+        endProgress();
+        console.log("All done");
+        findDevices();
+      });
+    } else {
+      console.log("Found no devices.");
+      findDevices();
+    }
+  }, SCAN_TIMEOUT*1000);
+/*
+  startProgress();
+  bluetooth.requestDevice({ filters:[{ name: "DfuTarg" }]}).then(function(bluetoothDevice) {
+    setStatus("Waiting random time period");
+    setTimeout(function() {
+      updateDevice(bluetoothDevice);
+    }, 1000*Math.random());
+  }).catch(function(e) {
+    console.log(e);
+    setStatus("Not found - trying again...");
+    setTimeout(findDevice, 500+2000*Math.random());
+  });*/
 }
 
 // Load a file, returning a buffer
@@ -105,9 +142,8 @@ function downloadFile(url) {
 }
 
 // Update device using image containing init packet and data
-function updateFirmware(updater, dfu, device, image) {
-
-  progressBar.fmt = `${currentStatus} [:bar] :percent :etas`;
+function updateFirmware(progressBar, dfu, device, image) {
+  progressBar.fmt = "uploading [:bar] :percent :etas";
   progressBar.total = image.imageData.byteLength;
   progressBar.update(0);
   dfu.addEventListener(SecureDfu.EVENT_PROGRESS, event => {
@@ -120,11 +156,14 @@ function updateFirmware(updater, dfu, device, image) {
 }
 
 
-function updateDevice(updater, selectedDevice) {
+function updateDevice(selectedDevice) {
+  var progressBar = multiprogress.newBar("Connecting ", {
+      complete: "=",
+      incomplete: " ",
+      width: 20, total: 100,
+  });
   return Promise.resolve(selectedDevice)
   .then(selectedDevice => {
-    setStatus("connecting...");
-
     // Use default bluetooth instance
     dfu = new SecureDfu(crc.buf, webbluetooth.bluetooth);
     return dfu.setDfuMode(selectedDevice);
@@ -135,28 +174,22 @@ function updateDevice(updater, selectedDevice) {
   })
   .then(image => {
     if (image) {
-      setStatus("base image");
-      return updateFirmware(updater, dfu, device, image);
+      return updateFirmware(progressBar, dfu, device, image);
     }
   })
   .then(() => package.getAppImage())
   .then(image => {
     if (image) {
-      setStatus("app image");
-      return updateFirmware(updater, dfu, device, image);
+      return updateFirmware(progressBar, dfu, device, image);
     }
   })
   .then(() => {
-    setStatus("complete");
-    updater.done = true;
+    setStatus(selectedDevice.id+" Complete");
     setStatus("Finished "+updater.id);
-    setTimeout(findDevice, 1000);
   })
-  .catch(error => {
-    updater.done = true;
-    setStatus("ERROR: "+error.message || error);
-    setTimeout(findDevice, 1000);
-  });
+  /*.catch(error => {
+    setStatus(selectedDevice.id+" ERROR: "+error.message || error);
+  });*/
 }
 
 //var FILENAME = "http://www.espruino.com/binaries/espruino_1v98_puckjs.zip";
@@ -178,5 +211,5 @@ Promise.resolve(FILENAME)
 })
 .then(() => {
     setStatus("Scanning for DFU devices...");
-    findDevice();
+    findDevices();
 });

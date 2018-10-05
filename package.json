@@ -1,0 +1,20 @@
+{
+  "name": "auto-dfu-flasher",
+  "version": "1.0.0",
+  "description": "Automatic flasher for Nordic DFU",
+  "main": "autoflash.js",
+  "dependencies": {
+    "crc-32": "^1.2.0",
+    "jszip": "^3.1.5",
+    "multi-progress": "^2.0.0",
+    "progress": "^2.0.0",
+    "web-bluetooth-dfu": "^1.0.2",
+    "webbluetooth": "^1.0.7"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Gordon Williams",
+  "license": "ISC"
+}
