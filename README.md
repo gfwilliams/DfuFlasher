@@ -6,12 +6,21 @@ Tool for automatically flashing multiple Nordif DFU devices at once.
 Currently work in progress.
 
 
+
+Check this out, then:
+
 ```
 sudo apt-get install tmux
+npm install
+```
 
-npm install web-bluetooth-dfu
-mv node_modules/web-bluetooth-dfu/* .
-npm install crc-32 progress webbluetooth jszip
-wget http://www.espruino.com/binaries/espruino_1v98_puckjs.zip
+To run:
 
+
+```
+# Get a list of DFU devices - useless currently
+node getDfuTarg.js
+
+# AUtomatically find some DfuTarg devices, flash the first one
+node autoflash.js
 ```
