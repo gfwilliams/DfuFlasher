@@ -6,7 +6,7 @@
   "dependencies": {
     "crc-32": "^1.2.0",
     "jszip": "^3.1.5",
-    "multi-progress": "^2.0.0",
+    "noble": "^1.9.1",
     "progress": "^2.0.0",
     "web-bluetooth-dfu": "^1.0.2",
     "webbluetooth": "^1.0.7"

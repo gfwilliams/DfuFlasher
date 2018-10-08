@@ -1,11 +1,7 @@
 DfuFlasher
 ===========
 
-Tool for automatically flashing multiple Nordif DFU devices at once.
-
-Currently work in progress.
-
-
+Tool for automatically flashing multiple Nordic DFU devices at once.
 
 Check this out, then:
 
@@ -16,11 +12,11 @@ npm install
 
 To run:
 
-
 ```
-# Get a list of DFU devices - useless currently
-node getDfuTarg.js
-
-# AUtomatically find some DfuTarg devices, flash the first one
-node autoflash.js
+# edit go.sh to include the DFU updater zip of your choice
+./go.sh
 ```
+
+This will do a quick 2 second scan and will the attempt to program the
+first 4 devices found, at once. Programming is slow (around 5 minutes)
+so 4 devices at once speeds this up.

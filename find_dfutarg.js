@@ -1,6 +1,8 @@
+/* Get a list of DfuTarg devices */
+
 var noble = require('noble');
 var devices = [];
-var SCANTIME = 5;
+var SCANTIME = 2;
 
 function onDiscovery(peripheral) {
   if (!peripheral.advertisement ||
